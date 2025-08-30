@@ -43,238 +43,300 @@ function App() {
   }, []);
 
   const initializeApp = useCallback(async () => {
-  try {
-    // Get board context from Monday
-    const context = await monday.get('context');
-    
-    // Type guard to check if we're in a board context
-    const boardContext = context.data as any;
-    let currentBoardId = boardContext?.boardId || boardContext?.boardIds?.[0];
-    
-    // For local development, use a mock board ID
-    if (!currentBoardId && window.location.hostname === 'localhost') {
-      console.warn('No board context found. Using mock data for local development.');
-      currentBoardId = 'mock-board-123';
-      // Set mock data instead of fetching from API
-      setMockData();
-      return;
+    try {
+      // Get board context from Monday
+      const context = await monday.get('context');
+      
+      // Type guard to check if we're in a board context
+      const boardContext = context.data as any;
+      let currentBoardId = boardContext?.boardId || boardContext?.boardIds?.[0];
+      
+      // For local development, use a mock board ID
+      if (!currentBoardId && window.location.hostname === 'localhost') {
+        console.warn('No board context found. Using mock data for local development.');
+        currentBoardId = 'mock-board-123';
+        // Set mock data instead of fetching from API
+        setMockData();
+        return;
+      }
+      
+      if (!currentBoardId) {
+        throw new Error('No board ID found in context. Please make sure this app is used on a board.');
+      }
+
+      setBoardId(currentBoardId);
+      await fetchBoardData(currentBoardId);
+    } catch (err) {
+      console.error('Error initializing app:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize app');
+    } finally {
+      setLoading(false);
     }
-    
-    if (!currentBoardId) {
-      throw new Error('No board ID found in context. Please make sure this app is used on a board.');
-    }
-    
-    setBoardId(currentBoardId);
-    await fetchBoardData(currentBoardId);
-  } catch (error) {
-    console.error('Error initializing app:', error);
-    setError('Failed to initialize app');
-    setLoading(false);
-  }
   }, []);
+
+  const setMockData = () => {
+    const mockData: BoardData = {
+      id: 'mock-board-123',
+      name: 'Sample CRM Board',
+      columns: [
+        { id: 'location', title: 'Location', type: 'text' },
+        { id: 'name', title: 'Name', type: 'text' },
+        { id: 'company', title: 'Company', type: 'text' }
+      ],
+      items: [
+        {
+          id: '1',
+          name: 'John Doe',
+          column_values: [
+            { id: 'location', text: 'New York', value: 'New York' },
+            { id: 'name', text: 'John Doe', value: 'John Doe' },
+            { id: 'company', text: 'ABC Corp', value: 'ABC Corp' }
+          ]
+        },
+        {
+          id: '2',
+          name: 'Jane Smith',
+          column_values: [
+            { id: 'location', text: 'Los Angeles', value: 'Los Angeles' },
+            { id: 'name', text: 'Jane Smith', value: 'Jane Smith' },
+            { id: 'company', text: 'XYZ Inc', value: 'XYZ Inc' }
+          ]
+        },
+        {
+          id: '3',
+          name: 'Bob Johnson',
+          column_values: [
+            { id: 'location', text: 'Chicago', value: 'Chicago' },
+            { id: 'name', text: 'Bob Johnson', value: 'Bob Johnson' },
+            { id: 'company', text: 'Tech Solutions', value: 'Tech Solutions' }
+          ]
+        }
+      ]
+    };
+
+    setBoardData(mockData);
+    processLocationData(mockData);
+    setLoading(false);
+  };
 
   const fetchBoardData = async (boardId: string) => {
     try {
-      // Call our backend API endpoint
-      const response = await fetch(`/api/boards/${boardId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
+      const response = await fetch(`/api/boards/${boardId}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch board data');
+        throw new Error(`Failed to fetch board data: ${response.status}`);
       }
 
       const data = await response.json();
       setBoardData(data.board);
-
-      // Find location column
-      const locationCol = data.board.columns.find((col: BoardColumn) =>
-        col.title.toLowerCase().includes('location') ||
-        col.title.toLowerCase().includes('address') ||
-        col.title.toLowerCase().includes('city') ||
-        col.title.toLowerCase().includes('state')
-      );
-
-      if (locationCol) {
-        setLocationColumn(locationCol);
-        extractUniqueLocations(data.board.items, locationCol.id);
-      } else {
-        setError('No location column found. Please add a column with "Location", "Address", or "City" in its name.');
-      }
-
-      setFilteredItems(data.board.items);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching board data:', error);
-      setError('Failed to fetch board data');
-      setLoading(false);
+      processLocationData(data.board);
+    } catch (err) {
+      console.error('Error fetching board data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch board data');
     }
   };
 
-  const extractUniqueLocations = (items: BoardItem[], columnId: string) => {
-    const locations = new Set<string>();
+  const processLocationData = (board: BoardData) => {
+    // Find the first text or location column to use for filtering
+    const locationCol = board.columns.find(col => 
+      col.title.toLowerCase().includes('location') || 
+      col.title.toLowerCase().includes('city') ||
+      col.title.toLowerCase().includes('office') ||
+      col.type === 'text'
+    );
 
-    items.forEach(item => {
-      const locationValue = item.column_values.find(col => col.id === columnId);
-      if (locationValue && locationValue.text && locationValue.text.trim()) {
-        locations.add(locationValue.text.trim());
-      }
-    });
-
-    setAllLocations(Array.from(locations).sort());
-  };
-
-  const handleLocationFilterChange = (locations: string[]) => {
-    setSelectedLocations(locations);
-
-    if (!boardData || !locationColumn) return;
-
-    if (locations.length === 0) {
-      setFilteredItems(boardData.items);
+    if (!locationCol) {
+      setError('No location column found in this board');
       return;
     }
 
-    const filtered = boardData.items.filter(item => {
-      const locationValue = item.column_values.find(col => col.id === locationColumn.id);
-      if (!locationValue || !locationValue.text) return false;
+    setLocationColumn(locationCol);
 
-      return locations.some(selectedLocation =>
-        locationValue.text.toLowerCase().includes(selectedLocation.toLowerCase())
-      );
+    // Extract unique locations
+    const locations = new Set<string>();
+    board.items.forEach(item => {
+      const locationValue = item.column_values.find(col => col.id === locationCol.id);
+      if (locationValue?.text) {
+        locations.add(locationValue.text);
+      }
+    });
+
+    const sortedLocations = Array.from(locations).sort();
+    setAllLocations(sortedLocations);
+    setSelectedLocations(sortedLocations); // Start with all selected
+    setFilteredItems(board.items);
+  };
+
+  const handleLocationChange = (locations: string[]) => {
+    setSelectedLocations(locations);
+  };
+
+  const handleApplyFilter = () => {
+    if (!boardData || !locationColumn) return;
+
+    const filtered = boardData.items.filter(item => {
+      if (selectedLocations.length === 0) return true;
+      
+      const locationValue = item.column_values.find(col => col.id === locationColumn.id);
+      return locationValue?.text && selectedLocations.includes(locationValue.text);
     });
 
     setFilteredItems(filtered);
   };
 
-  // Add mock data function for local development
-const setMockData = () => {
-  const mockBoard: BoardData = {
-    id: 'mock-board-123',
-    name: 'Sample CRM Board',
-    columns: [
-      { id: 'location', title: 'Location', type: 'text' },
-      { id: 'name', title: 'Name', type: 'text' }
-    ],
-    items: [
-      {
-        id: '1',
-        name: 'John Doe',
-        column_values: [
-          { id: 'location', text: 'New York', value: 'New York' },
-          { id: 'name', text: 'John Doe', value: 'John Doe' }
-        ]
-      },
-      {
-        id: '2',
-        name: 'Jane Smith',
-        column_values: [
-          { id: 'location', text: 'Los Angeles', value: 'Los Angeles' },
-          { id: 'name', text: 'Jane Smith', value: 'Jane Smith' }
-        ]
-      }
-    ]
-  };
-  
-  setBoardData(mockBoard);
-  const locationCol = mockBoard.columns.find(col => col.id === 'location');
-  if (locationCol) {
-    setLocationColumn(locationCol);
-    extractUniqueLocations(mockBoard.items, locationCol.id);
-  }
-  setFilteredItems(mockBoard.items);
-  setLoading(false);
-};
-
-  const applyFilterToBoard = async () => {
-    try {
-      if (!boardId || !locationColumn) return;
-
-      // Note: Board filtering might not work in all contexts
-      // For now, we'll just show the filtered results in our UI
-      monday.execute('notice', {
-        message: selectedLocations.length === 0 
-          ? 'Filter cleared - showing all contacts' 
-          : `Showing ${filteredItems.length} contacts filtered by ${selectedLocations.length} location(s)`,
-        type: 'success'
-      });
-
-      // TODO: Implement actual board filtering when Monday SDK supports it
-      // This would require Monday.com's board filtering API
-      
-    } catch (error) {
-      console.error('Error applying filter:', error);
-      monday.execute('notice', {
-        message: 'Filter applied locally in the app',
-        type: 'info'
-      });
-    }
-  };
-
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading board data...</p>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{ fontSize: '18px', color: '#323338' }}>Loading board data...</div>
+        <div style={{ fontSize: '14px', color: '#676879' }}>Connecting to Monday.com</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-container">
-        <h3>⚠️ Error</h3>
+      <div style={{ 
+        padding: '20px', 
+        color: '#d93025',
+        textAlign: 'center',
+        backgroundColor: '#ffeaa7',
+        border: '1px solid #d93025',
+        borderRadius: '8px',
+        margin: '20px'
+      }}>
+        <h3>Error</h3>
         <p>{error}</p>
-        <button onClick={initializeApp} className="retry-button">
+        <button 
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            backgroundColor: '#0073ea',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
           Retry
         </button>
       </div>
     );
   }
 
-  if (!locationColumn) {
+  if (!boardData || !locationColumn) {
     return (
-      <div className="error-container">
-        <h3>📍 No Location Column Found</h3>
-        <p>Please make sure your board has a column with "Location", "Address", "City", or "State" in its name.</p>
-        <button onClick={initializeApp} className="retry-button">
-          Refresh
-        </button>
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center',
+        color: '#676879'
+      }}>
+        No board data available
       </div>
     );
   }
 
   return (
-    <div className="app-container">
-      <div className="app-header">
-        <h2>📍 Pinpoint Location Filter</h2>
-        <p>Filter contacts by location in "{boardData?.name}"</p>
-      </div>
+    <div className="App">
+      <header style={{ 
+        padding: '20px', 
+        backgroundColor: '#f5f6f8', 
+        borderBottom: '1px solid #d0d4d9' 
+      }}>
+        <h1 style={{ margin: 0, color: '#323338' }}>
+          📍 {boardData.name} - Location Filter
+        </h1>
+        <p style={{ margin: '8px 0 0 0', color: '#676879' }}>
+          Filter board items by location to focus on specific regions
+        </p>
+      </header>
 
-      <LocationFilter
-        locations={allLocations}
-        selectedLocations={selectedLocations}
-        onLocationChange={handleLocationFilterChange}
-        onApplyFilter={applyFilterToBoard}
-        totalItems={boardData?.items.length || 0}
-        filteredItems={filteredItems.length}
-        locationColumnName={locationColumn.title}
-      />
+      <main style={{ padding: '20px' }}>
+        <LocationFilter
+          locations={allLocations}
+          selectedLocations={selectedLocations}
+          onLocationChange={handleLocationChange}
+          onApplyFilter={handleApplyFilter}
+          totalItems={boardData.items.length}
+          filteredItems={filteredItems.length}
+          locationColumnName={locationColumn.title}
+        />
 
-      <div className="results-summary">
-        <div className="summary-content">
-          <span className="summary-main">
-            Showing {filteredItems.length} of {boardData?.items.length || 0} contacts
-          </span>
-          {selectedLocations.length > 0 && (
-            <div className="summary-filters">
-              <strong>Active filters:</strong> {selectedLocations.join(', ')}
+        <div style={{ marginTop: '20px' }}>
+          <h2 style={{ color: '#323338', marginBottom: '16px' }}>
+            Filtered Results ({filteredItems.length} items)
+          </h2>
+          
+          {filteredItems.length === 0 ? (
+            <div style={{ 
+              padding: '40px', 
+              textAlign: 'center', 
+              color: '#676879',
+              backgroundColor: '#f8f9fb',
+              borderRadius: '8px',
+              border: '1px solid #e1e5e9'
+            }}>
+              No items match the selected location filters
+            </div>
+          ) : (
+            <div style={{ 
+              display: 'grid', 
+              gap: '12px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
+            }}>
+              {filteredItems.map(item => (
+                <div 
+                  key={item.id}
+                  style={{
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    border: '1px solid #d0d4d9',
+                    borderRadius: '8px',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  <h3 style={{ 
+                    margin: '0 0 12px 0', 
+                    color: '#323338',
+                    fontSize: '16px'
+                  }}>
+                    {item.name}
+                  </h3>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {item.column_values.map(colVal => {
+                      const column = boardData.columns.find(col => col.id === colVal.id);
+                      if (!column || !colVal.text) return null;
+                      
+                      return (
+                        <div key={colVal.id} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '14px'
+                        }}>
+                          <span style={{ color: '#676879', fontWeight: '500' }}>
+                            {column.title}:
+                          </span>
+                          <span style={{ color: '#323338' }}>
+                            {colVal.text}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
