@@ -13,6 +13,7 @@
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.8",
     "@vibe/core": "^3.0.0",
+    "lucide-react": "^0.542.0",
     "monday-sdk-js": "^0.5.6"
   },
   "eslintConfig": {
