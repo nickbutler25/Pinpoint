@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Contact {
   id: string;
@@ -17,9 +17,13 @@ interface Column {
 
 interface TestGridProps {
   onLocationFilterClick: (columnId: string, locations: string[], itemCount: number) => void;
+  activeLocationFilter?: string[]; // NEW: Active filter prop
 }
 
-const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
+const TestGrid: React.FC<TestGridProps> = ({ 
+  onLocationFilterClick, 
+  activeLocationFilter = [] // Default to empty array
+}) => {
   // All test data consolidated in TestGrid
   const [contacts] = useState<Contact[]>([
     { id: '1', name: 'John Doe', company: 'ABC Corp', location: 'New York', status: 'Active', priority: 'High' },
@@ -42,7 +46,17 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
     { id: 'priority', title: 'Priority', type: 'dropdown' },
   ];
 
-  // Derive unique locations from the actual data
+  // NEW: Filter contacts based on active location filter
+  const filteredContacts = useMemo(() => {
+    if (activeLocationFilter.length === 0) {
+      return contacts; // No filter applied, show all
+    }
+    return contacts.filter(contact => 
+      activeLocationFilter.includes(contact.location)
+    );
+  }, [contacts, activeLocationFilter]);
+
+  // Derive unique locations from ALL contacts (not just filtered)
   const allLocations = React.useMemo(() => {
     const uniqueLocations = [...new Set(contacts.map(contact => contact.location))];
     return uniqueLocations.sort();
@@ -76,7 +90,7 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
     
     if (action === 'filter') {
       if (column.type === 'location') {
-        // Pass the derived locations and item count to parent
+        // Pass the derived locations and TOTAL item count (not filtered count)
         onLocationFilterClick(column.id, allLocations, contacts.length);
       } else {
         alert(`Generic filter for ${column.title} column would open here`);
@@ -125,115 +139,97 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
                 style={{
                   padding: '4px 6px',
                   border: 'none',
-                  backgroundColor: 'transparent',
+                  background: 'none',
                   cursor: 'pointer',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  color: '#676879'
+                  borderRadius: '3px',
+                  color: '#676879',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
                 }}
-                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#e6e9ef'}
-                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
               >
                 ⋯
               </button>
-
+              
               {/* Context Menu */}
               {activeContextMenu === column.id && (
                 <div
-                  ref={(el) => { contextMenuRefs.current[column.id] = el; }}
+                  ref={el => { contextMenuRefs.current[column.id] = el; }}
                   style={{
                     position: 'absolute',
                     top: '100%',
                     right: 0,
-                    marginTop: '4px',
                     backgroundColor: 'white',
                     border: '1px solid #d0d4d9',
                     borderRadius: '6px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                     zIndex: 1000,
-                    minWidth: '140px'
+                    minWidth: '120px',
+                    padding: '4px 0'
                   }}
                 >
                   <button
                     onClick={() => handleMenuItemClick('filter', column)}
                     style={{
+                      display: 'block',
                       width: '100%',
-                      padding: '8px 16px',
+                      padding: '8px 12px',
                       border: 'none',
-                      backgroundColor: 'transparent',
+                      background: 'none',
                       textAlign: 'left',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#323338',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      color: '#323338'
                     }}
-                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f5f6f8'}
-                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                   >
-                    🔽 Filter
+                    🔍 Filter
                   </button>
                   <button
                     onClick={() => handleMenuItemClick('sort-asc', column)}
                     style={{
+                      display: 'block',
                       width: '100%',
-                      padding: '8px 16px',
+                      padding: '8px 12px',
                       border: 'none',
-                      backgroundColor: 'transparent',
+                      background: 'none',
                       textAlign: 'left',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#323338',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      color: '#323338'
                     }}
-                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f5f6f8'}
-                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                   >
                     ↑ Sort A-Z
                   </button>
                   <button
                     onClick={() => handleMenuItemClick('sort-desc', column)}
                     style={{
+                      display: 'block',
                       width: '100%',
-                      padding: '8px 16px',
+                      padding: '8px 12px',
                       border: 'none',
-                      backgroundColor: 'transparent',
+                      background: 'none',
                       textAlign: 'left',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#323338',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      color: '#323338'
                     }}
-                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f5f6f8'}
-                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                   >
                     ↓ Sort Z-A
                   </button>
-                  <hr style={{ margin: '8px 0', border: 'none', borderTop: '1px solid #e1e5e9' }} />
                   <button
                     onClick={() => handleMenuItemClick('hide', column)}
                     style={{
+                      display: 'block',
                       width: '100%',
-                      padding: '8px 16px',
+                      padding: '8px 12px',
                       border: 'none',
-                      backgroundColor: 'transparent',
+                      background: 'none',
                       textAlign: 'left',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#323338',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      color: '#323338'
                     }}
-                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f5f6f8'}
-                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                   >
-                    👁 Hide Column
+                    👁️ Hide column
                   </button>
                 </div>
               )}
@@ -242,30 +238,24 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
         ))}
       </div>
 
-      {/* Grid Body */}
+      {/* Grid Body - USE FILTERED CONTACTS */}
       <div>
-        {contacts.map((contact, index) => (
-          <div
-            key={contact.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(5, 1fr)',
-              gap: '12px',
-              padding: '12px 16px',
-              borderBottom: index < contacts.length - 1 ? '1px solid #f0f1f3' : 'none',
-              backgroundColor: 'white',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fb'}
-            onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = 'white'}
-          >
-            <div style={{ fontSize: '14px', color: '#323338', fontWeight: '500' }}>
-              {contact.name}
-            </div>
-            <div style={{ fontSize: '14px', color: '#676879' }}>
-              {contact.company}
-            </div>
-            <div style={{ fontSize: '14px', color: '#323338' }}>
+        {filteredContacts.map((contact) => (
+          <div key={contact.id} style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: '12px',
+            padding: '16px',
+            borderBottom: '1px solid #e1e5e9',
+            fontSize: '14px',
+            color: '#323338'
+          }}>
+            <div style={{ fontWeight: '500' }}>{contact.name}</div>
+            <div>{contact.company}</div>
+            <div style={{ 
+              fontWeight: '500',
+              color: activeLocationFilter.includes(contact.location) ? '#0073ea' : 'inherit'
+            }}>
               {contact.location}
             </div>
             <div style={{ fontSize: '14px' }}>
@@ -300,7 +290,7 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
         ))}
       </div>
 
-      {/* Instructions */}
+      {/* Results summary and instructions */}
       <div style={{
         padding: '16px',
         backgroundColor: '#f8f9fb',
@@ -309,8 +299,18 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
         color: '#676879',
         textAlign: 'center'
       }}>
-        <strong>Test Instructions:</strong> Click the "⋯" button on any column header, then select "Filter". 
-        The Location column will open your LocationFilter popup!
+        <div style={{ marginBottom: '8px', fontWeight: '500', color: '#323338' }}>
+          Showing {filteredContacts.length} of {contacts.length} contacts
+          {activeLocationFilter.length > 0 && (
+            <span style={{ color: '#0073ea' }}>
+              {' '}(filtered by: {activeLocationFilter.join(', ')})
+            </span>
+          )}
+        </div>
+        <div>
+          <strong>Test Instructions:</strong> Click the "⋯" button on any column header, then select "Filter". 
+          The Location column will open your LocationFilter popup!
+        </div>
       </div>
     </div>
   );

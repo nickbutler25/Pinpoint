@@ -10,12 +10,15 @@ interface BoardColumn {
 }
 
 function App() {
-  // UI state management only
+  // UI state management
   const [showLocationFilter, setShowLocationFilter] = useState(false);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [filterColumn, setFilterColumn] = useState<BoardColumn | null>(null);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [totalItems, setTotalItems] = useState(0);
+  
+  // NEW: Active filter state to pass to TestGrid
+  const [activeLocationFilter, setActiveLocationFilter] = useState<string[]>([]);
 
   // Handle when TestGrid triggers location filter
   const handleLocationFilterClick = (columnId: string, locations: string[], itemCount: number) => {
@@ -24,6 +27,7 @@ function App() {
       setFilterColumn(locationColumn);
       setAvailableLocations(locations);
       setTotalItems(itemCount);
+      setSelectedLocations(activeLocationFilter); // Pre-populate with current filter
       setShowLocationFilter(true);
     }
   };
@@ -33,16 +37,25 @@ function App() {
     setSelectedLocations(locations);
   };
 
-  // Handle apply filter
+  // Handle apply filter - UPDATE THIS
   const handleApplyFilter = () => {
-    alert(`Filter applied! Selected locations: ${selectedLocations.join(', ')}`);
+    // Apply the filter by updating the active filter state
+    setActiveLocationFilter(selectedLocations);
     setShowLocationFilter(false);
+    
+    // Optional: Show success message
+    console.log(`Filter applied! Selected locations: ${selectedLocations.join(', ')}`);
   };
 
   // Handle close filter
   const handleCloseFilter = () => {
     setShowLocationFilter(false);
-    setSelectedLocations([]);
+    setSelectedLocations([]); // Reset temporary selections
+  };
+
+  // NEW: Clear all filters function
+  const handleClearAllFilters = () => {
+    setActiveLocationFilter([]);
   };
 
   return (
@@ -59,10 +72,47 @@ function App() {
         <p style={{ margin: '8px 0 0 0', color: '#676879' }}>
           Test your location filter by clicking the "⋯" button on the Location column
         </p>
+        
+        {/* Active filter indicator */}
+        {activeLocationFilter.length > 0 && (
+          <div style={{
+            marginTop: '12px',
+            padding: '8px 12px',
+            backgroundColor: '#e3f2fd',
+            borderRadius: '6px',
+            fontSize: '14px',
+            color: '#1976d2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>
+              <strong>Active Filter:</strong> {activeLocationFilter.join(', ')} 
+              ({activeLocationFilter.length} location{activeLocationFilter.length !== 1 ? 's' : ''})
+            </span>
+            <button
+              onClick={handleClearAllFilters}
+              style={{
+                background: 'none',
+                border: '1px solid #1976d2',
+                color: '#1976d2',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              Clear Filter
+            </button>
+          </div>
+        )}
       </header>
 
-      {/* Test Grid */}
-      <TestGrid onLocationFilterClick={handleLocationFilterClick} />
+      {/* Test Grid - PASS THE ACTIVE FILTER */}
+      <TestGrid 
+        onLocationFilterClick={handleLocationFilterClick}
+        activeLocationFilter={activeLocationFilter}
+      />
 
       {/* Location Filter Popup */}
       {showLocationFilter && filterColumn && (
@@ -92,7 +142,13 @@ function App() {
               onLocationChange={handleLocationChange}
               onApplyFilter={handleApplyFilter}
               totalItems={totalItems}
-              filteredItems={selectedLocations.length === 0 ? totalItems : selectedLocations.length}
+              filteredItems={selectedLocations.length === 0 ? totalItems : 
+                // Calculate how many items match the selected locations
+                selectedLocations.length > 0 ? 
+                  // This is a rough estimate - TestGrid will have the actual count
+                  Math.round(totalItems * (selectedLocations.length / availableLocations.length))
+                  : totalItems
+              }
               locationColumnName={filterColumn.title}
             />
             
@@ -115,7 +171,7 @@ function App() {
                   fontWeight: '500'
                 }}
               >
-                Close Filter
+                Cancel
               </button>
             </div>
           </div>
