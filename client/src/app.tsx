@@ -10,19 +10,20 @@ interface BoardColumn {
 }
 
 function App() {
-  // Simple state management
+  // UI state management only
   const [showLocationFilter, setShowLocationFilter] = useState(false);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [filterColumn, setFilterColumn] = useState<BoardColumn | null>(null);
-  
-  // Test data
-  const allLocations = ['New York', 'Los Angeles', 'Chicago', 'San Francisco', 'Miami', 'Seattle'];
-  const locationColumn = { id: 'location', title: 'Location', type: 'location' };
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Handle when TestGrid triggers location filter
-  const handleLocationFilterClick = (columnId: string) => {
+  const handleLocationFilterClick = (columnId: string, locations: string[], itemCount: number) => {
     if (columnId === 'location') {
+      const locationColumn = { id: 'location', title: 'Location', type: 'location' };
       setFilterColumn(locationColumn);
+      setAvailableLocations(locations);
+      setTotalItems(itemCount);
       setShowLocationFilter(true);
     }
   };
@@ -36,6 +37,12 @@ function App() {
   const handleApplyFilter = () => {
     alert(`Filter applied! Selected locations: ${selectedLocations.join(', ')}`);
     setShowLocationFilter(false);
+  };
+
+  // Handle close filter
+  const handleCloseFilter = () => {
+    setShowLocationFilter(false);
+    setSelectedLocations([]);
   };
 
   return (
@@ -76,17 +83,16 @@ function App() {
             borderRadius: '8px',
             maxWidth: '400px',
             width: '90%',
-            maxHeight: '80vh',
-            overflow: 'hidden',
+            maxHeight: 'none',
             boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)'
           }}>
             <LocationFilter
-              locations={allLocations}
+              locations={availableLocations}
               selectedLocations={selectedLocations}
               onLocationChange={handleLocationChange}
               onApplyFilter={handleApplyFilter}
-              totalItems={8}
-              filteredItems={selectedLocations.length === 0 ? 8 : selectedLocations.length}
+              totalItems={totalItems}
+              filteredItems={selectedLocations.length === 0 ? totalItems : selectedLocations.length}
               locationColumnName={filterColumn.title}
             />
             
@@ -96,7 +102,7 @@ function App() {
               backgroundColor: '#f5f6f8'
             }}>
               <button
-                onClick={() => setShowLocationFilter(false)}
+                onClick={handleCloseFilter}
                 style={{
                   width: '100%',
                   padding: '8px 16px',
@@ -115,26 +121,6 @@ function App() {
           </div>
         </div>
       )}
-
-      {/* Debug Info */}
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        left: '20px',
-        padding: '12px',
-        backgroundColor: 'white',
-        border: '1px solid #d0d4d9',
-        borderRadius: '6px',
-        fontSize: '12px',
-        color: '#676879',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        maxWidth: '300px'
-      }}>
-        <strong>Test Status:</strong><br />
-        Available Locations: {allLocations.length}<br />
-        Selected Locations: {selectedLocations.length}<br />
-        Filter Open: {showLocationFilter ? 'Yes' : 'No'}
-      </div>
     </div>
   );
 }

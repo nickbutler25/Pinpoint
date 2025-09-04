@@ -16,10 +16,11 @@ interface Column {
 }
 
 interface TestGridProps {
-  onLocationFilterClick: (columnId: string) => void;
+  onLocationFilterClick: (columnId: string, locations: string[], itemCount: number) => void;
 }
 
 const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
+  // All test data consolidated in TestGrid
   const [contacts] = useState<Contact[]>([
     { id: '1', name: 'John Doe', company: 'ABC Corp', location: 'New York', status: 'Active', priority: 'High' },
     { id: '2', name: 'Jane Smith', company: 'XYZ Inc', location: 'Los Angeles', status: 'Pending', priority: 'Medium' },
@@ -29,6 +30,8 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
     { id: '6', name: 'Lisa Garcia', company: 'Enterprise Corp', location: 'Miami', status: 'Pending', priority: 'High' },
     { id: '7', name: 'Tom Wilson', company: 'Innovation Labs', location: 'Seattle', status: 'Active', priority: 'Low' },
     { id: '8', name: 'Emma Davis', company: 'Creative Agency', location: 'Los Angeles', status: 'Completed', priority: 'Medium' },
+    { id: '9', name: 'Alex Rodriguez', company: 'Data Dynamics', location: 'Chicago', status: 'Active', priority: 'High' },
+    { id: '10', name: 'Maria Gonzalez', company: 'Cloud Services', location: 'Miami', status: 'Pending', priority: 'Medium' }
   ]);
 
   const columns: Column[] = [
@@ -38,6 +41,12 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
     { id: 'status', title: 'Status', type: 'status' },
     { id: 'priority', title: 'Priority', type: 'dropdown' },
   ];
+
+  // Derive unique locations from the actual data
+  const allLocations = React.useMemo(() => {
+    const uniqueLocations = [...new Set(contacts.map(contact => contact.location))];
+    return uniqueLocations.sort();
+  }, [contacts]);
 
   const [activeContextMenu, setActiveContextMenu] = useState<string | null>(null);
   const contextMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -67,7 +76,8 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
     
     if (action === 'filter') {
       if (column.type === 'location') {
-        onLocationFilterClick(column.id);
+        // Pass the derived locations and item count to parent
+        onLocationFilterClick(column.id, allLocations, contacts.length);
       } else {
         alert(`Generic filter for ${column.title} column would open here`);
       }
@@ -117,35 +127,32 @@ const TestGrid: React.FC<TestGridProps> = ({ onLocationFilterClick }) => {
                   border: 'none',
                   backgroundColor: 'transparent',
                   cursor: 'pointer',
-                  borderRadius: '3px',
+                  borderRadius: '4px',
                   fontSize: '14px',
-                  color: '#676879',
-                  transition: 'background-color 0.2s'
+                  color: '#676879'
                 }}
-                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#e1e5e9'}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#e6e9ef'}
                 onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                title="Column options"
               >
                 ⋯
               </button>
-              
-              {/* Context Menu - Conditional Rendering */}
+
+              {/* Context Menu */}
               {activeContextMenu === column.id && (
                 <div
                   ref={(el) => { contextMenuRefs.current[column.id] = el; }}
                   style={{
                     position: 'absolute',
                     top: '100%',
-                    right: '0',
+                    right: 0,
+                    marginTop: '4px',
                     backgroundColor: 'white',
                     border: '1px solid #d0d4d9',
                     borderRadius: '6px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                     zIndex: 1000,
-                    minWidth: '140px',
-                    padding: '8px 0'
+                    minWidth: '140px'
                   }}
-                  onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     onClick={() => handleMenuItemClick('filter', column)}
