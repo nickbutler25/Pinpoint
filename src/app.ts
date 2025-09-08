@@ -1,15 +1,16 @@
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 import path from 'path';
 
+
+import mondayGraphQLRoutes from './routes/monday-graphql';
 // Import routes
 import boardRoutes from './routes/board';
 import mondayRoutes from './routes/monday';
 
-// Load environment variables
-dotenv.config();
+
+
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api', boardRoutes);
+app.use('/api/monday', mondayGraphQLRoutes);
 app.use(mondayRoutes); // Add Monday integration routes
 
 // Serve static files from the React app build directory
@@ -56,6 +58,11 @@ app.get('/health', (req, res) => {
 
 // Catch all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+});
+
+// Add to src/app.ts
+app.get('/column-extension', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/build/index.html'));
 });
 

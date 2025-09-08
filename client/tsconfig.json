@@ -1,5 +1,5 @@
 {
-  "include": ["./src"],
+  "include": ["./src", "../src/routes/monday-graphql.ts"],
   "compilerOptions": {
     "incremental": true,
     "target": "ES2020",

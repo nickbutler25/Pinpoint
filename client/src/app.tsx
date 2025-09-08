@@ -1,5 +1,8 @@
-import { useState } from 'react';
+// client/src/App.tsx
+import mondaySdk from 'monday-sdk-js';
+import { useEffect, useState } from 'react';
 import './app.css';
+import ColumnExtension from './components/ColumnExtension';
 import LocationFilter from './components/LocationFilter';
 import TestGrid from './components/TestGrid';
 
@@ -10,54 +13,108 @@ interface BoardColumn {
 }
 
 function App() {
-  // UI state management
+  const [monday] = useState(() => mondaySdk());
+  const [context, setContext] = useState<any>(null);
+  const [appType, setAppType] = useState<'board_view' | 'column_extension' | 'unknown'>('unknown');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Board view state
   const [showLocationFilter, setShowLocationFilter] = useState(false);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [filterColumn, setFilterColumn] = useState<BoardColumn | null>(null);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [totalItems, setTotalItems] = useState(0);
-  
-  // NEW: Active filter state to pass to TestGrid
-  const [activeLocationFilter, setActiveLocationFilter] = useState<string[]>([]);
 
-  // Handle when TestGrid triggers location filter
+  useEffect(() => {
+    // Determine app context
+    monday.get('context').then((res) => {
+      const contextData = res.data;
+      setContext(contextData);
+
+      // Determine app type based on context
+      if (contextData.columnId) {
+        // Column extension context
+        setAppType('column_extension');
+      } else if (contextData.boardId) {
+        // Board view context
+        setAppType('board_view');
+      } else {
+        // Fallback to board view for testing
+        setAppType('board_view');
+      }
+
+      setIsLoading(false);
+    }).catch((error) => {
+      console.error('Error getting Monday context:', error);
+      // Fallback for local development
+      setAppType('board_view');
+      setIsLoading(false);
+    });
+  }, [monday]);
+
+  // Board view handlers
   const handleLocationFilterClick = (columnId: string, locations: string[], itemCount: number) => {
     if (columnId === 'location') {
       const locationColumn = { id: 'location', title: 'Location', type: 'location' };
       setFilterColumn(locationColumn);
       setAvailableLocations(locations);
       setTotalItems(itemCount);
-      setSelectedLocations(activeLocationFilter); // Pre-populate with current filter
       setShowLocationFilter(true);
     }
   };
 
-  // Handle location selection changes
   const handleLocationChange = (locations: string[]) => {
     setSelectedLocations(locations);
   };
 
-  // Handle apply filter - UPDATE THIS
   const handleApplyFilter = () => {
-    // Apply the filter by updating the active filter state
-    setActiveLocationFilter(selectedLocations);
+    alert(`Filter applied! Selected locations: ${selectedLocations.join(', ')}`);
     setShowLocationFilter(false);
-    
-    // Optional: Show success message
-    console.log(`Filter applied! Selected locations: ${selectedLocations.join(', ')}`);
   };
 
-  // Handle close filter
   const handleCloseFilter = () => {
     setShowLocationFilter(false);
-    setSelectedLocations([]); // Reset temporary selections
+    setSelectedLocations([]);
   };
 
-  // NEW: Clear all filters function
-  const handleClearAllFilters = () => {
-    setActiveLocationFilter([]);
-  };
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '200px',
+        fontFamily: 'Roboto, sans-serif'
+      }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
+  // Render based on app type
+  if (appType === 'column_extension') {
+    return (
+      <div>
+        {process.env.NODE_ENV === 'development' && (
+          <details style={{ marginBottom: '10px', fontSize: '12px' }}>
+            <summary>🔍 Debug Context (Development Only)</summary>
+            <pre style={{ 
+              backgroundColor: '#f5f5f5', 
+              padding: '10px', 
+              fontSize: '11px',
+              overflow: 'auto',
+              maxHeight: '200px'
+            }}>
+              {JSON.stringify(context, null, 2)}
+            </pre>
+          </details>
+        )}
+        <ColumnExtension />
+      </div>
+    );
+  }
+
+  // Board view interface (original functionality)
   return (
     <div className="App">
       {/* Header */}
@@ -67,52 +124,18 @@ function App() {
         borderBottom: '1px solid #d0d4d9' 
       }}>
         <h1 style={{ margin: 0, color: '#323338', fontSize: '24px' }}>
-          📍 Location Filter Test Environment
+          📍 Pinpoint Location Filter
         </h1>
         <p style={{ margin: '8px 0 0 0', color: '#676879' }}>
-          Test your location filter by clicking the "⋯" button on the Location column
+          {context && 'boardId' in context && context.boardId ? 
+            `Connected to Board: ${context.boardId}` : 
+            'Test your location filter by clicking the "⋯" button on the Location column'
+          }
         </p>
-        
-        {/* Active filter indicator */}
-        {activeLocationFilter.length > 0 && (
-          <div style={{
-            marginTop: '12px',
-            padding: '8px 12px',
-            backgroundColor: '#e3f2fd',
-            borderRadius: '6px',
-            fontSize: '14px',
-            color: '#1976d2',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <span>
-              <strong>Active Filter:</strong> {activeLocationFilter.join(', ')} 
-              ({activeLocationFilter.length} location{activeLocationFilter.length !== 1 ? 's' : ''})
-            </span>
-            <button
-              onClick={handleClearAllFilters}
-              style={{
-                background: 'none',
-                border: '1px solid #1976d2',
-                color: '#1976d2',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-            >
-              Clear Filter
-            </button>
-          </div>
-        )}
       </header>
 
-      {/* Test Grid - PASS THE ACTIVE FILTER */}
-      <TestGrid 
-        onLocationFilterClick={handleLocationFilterClick}
-        activeLocationFilter={activeLocationFilter}
-      />
+      {/* Test Grid */}
+      <TestGrid onLocationFilterClick={handleLocationFilterClick} />
 
       {/* Location Filter Popup */}
       {showLocationFilter && filterColumn && (
@@ -142,13 +165,7 @@ function App() {
               onLocationChange={handleLocationChange}
               onApplyFilter={handleApplyFilter}
               totalItems={totalItems}
-              filteredItems={selectedLocations.length === 0 ? totalItems : 
-                // Calculate how many items match the selected locations
-                selectedLocations.length > 0 ? 
-                  // This is a rough estimate - TestGrid will have the actual count
-                  Math.round(totalItems * (selectedLocations.length / availableLocations.length))
-                  : totalItems
-              }
+              filteredItems={selectedLocations.length === 0 ? totalItems : selectedLocations.length}
               locationColumnName={filterColumn.title}
             />
             
@@ -171,7 +188,7 @@ function App() {
                   fontWeight: '500'
                 }}
               >
-                Cancel
+                Close Filter
               </button>
             </div>
           </div>

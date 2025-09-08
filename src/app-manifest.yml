@@ -1,0 +1,20 @@
+# app-manifest.yml
+version: '1.0.0'
+app:
+  name: Pinpoint Location Filter
+  features:
+    - type: AppFeatureBoardView
+      name: Location Board View
+      build:
+        source: customUrl
+        suffix: "/view"
+    - type: AppFeatureBoardColumnExtension
+      name: Location Filter Extension
+      build:
+        source: customUrl
+        suffix: "/column-extension"
+    - type: AppFeatureIntegration
+      name: Location Integration
+      build:
+        source: customUrl
+        suffix: "/api/monday"
