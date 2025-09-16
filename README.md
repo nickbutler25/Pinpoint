@@ -1,212 +1,284 @@
-# Monday.com Location Filter App
+# Monday.com Enhanced Location Filter
 
-## Overview
+A Monday.com Board View app that intercepts and enhances the native filter functionality for Location columns, allowing users to filter by actual location values instead of just empty/not empty.
 
-This is a Monday.com integration app that provides location-based filtering for board items. It's built with TypeScript, Express.js backend, and React frontend. The app can be used as a board view integration to filter items by location columns.
+## 🎯 Features
 
-## Features
+- **Seamless Integration**: Intercepts native filter clicks on Location columns
+- **Enhanced Filtering**: Filter by specific location values with multi-select
+- **Native UI Match**: Exactly replicates Monday's filter design and behavior
+- **Multiple Operators**: "is one of", "is not one of", "contains", "is empty", etc.
+- **Persistent Filters**: Saves filter state and integrates with Monday's filter system
+- **Real-time Updates**: Shows filtered item counts as you select locations
 
-- 📍 **Location Filtering**: Filter board items by location or text columns
-- 🎯 **Smart Column Detection**: Automatically detects location-related columns
-- 🔍 **Search & Filter**: Search through locations and apply filters
-- 📊 **Real-time Stats**: Shows filtered vs total item counts
-- 🎨 **Modern UI**: Clean, responsive interface matching Monday's design language
+## 🚀 Quick Start
 
-## Prerequisites
+### Prerequisites
 
 - Node.js (v18 or higher)
 - npm or yarn
 - Monday.com developer account
-- Monday.com app with necessary permissions
+- Monday.com app created in your account
 
-## Installation
+### Installation
 
-1. Clone the repository:
-
+1. **Clone the repository:**
 ```bash
 git clone <your-repo-url>
-cd monday-location-filter-app
+cd monday-location-filter
 ```
 
-2. Install server dependencies:
-
+2. **Install dependencies:**
 ```bash
+# Install server dependencies
 npm install
-```
 
-3. Install client dependencies:
-
-```bash
+# Install client dependencies
 cd client && npm install && cd ..
 ```
 
-4. Set up environment variables:
-
+3. **Set up environment variables:**
 ```bash
 cp .env.example .env
 ```
 
-5. Configure your `.env` file with your Monday.com credentials:
-   - Get your `MONDAY_SIGNING_SECRET` from Monday.com Developers section → Your App → Basic Information → Signing Secret
+Edit `.env` and add:
+```
+MONDAY_SIGNING_SECRET=your_signing_secret_here
+PORT=8080
+NODE_ENV=development
+```
 
-## Development
-
-1. **Start the development server:**
-
+4. **Start development server:**
 ```bash
 npm run dev
 ```
 
-This command will:
-
+This will:
 - Build the React client
-- Start the Express server with hot reload
-- Create a secure tunnel for Monday.com integration testing
+- Start the Express server
+- Create a tunnel for Monday.com testing
 
-2. **Alternative development commands:**
+## 📋 Monday.com App Configuration
 
+### 1. Create a Monday App
+
+1. Go to [monday.com developers](https://developer.monday.com/)
+2. Click "Create App"
+3. Choose "Build your own app"
+4. Name it "Enhanced Location Filter"
+
+### 2. Configure Board View Feature
+
+In your app's Feature section:
+
+```json
+{
+  "name": "Enhanced Location Filter",
+  "type": "board_view",
+  "url": "https://your-app-url.com/view",
+  "permissions": {
+    "boards": ["read"],
+    "items": ["read"],
+    "columns": ["read"]
+  }
+}
+```
+
+### 3. Set Required Permissions
+
+Enable these scopes in the Permissions section:
+- `boards:read` - Read board structure
+- `items:read` - Read board items
+- `columns:read` - Read column data
+
+### 4. Install the App
+
+1. In your Monday workspace, go to any board
+2. Click the "+" button to add a view
+3. Search for "Enhanced Location Filter"
+4. Click to install
+
+## 🔧 How It Works
+
+### Architecture
+
+```
+┌─────────────────────┐
+│   Monday.com Board  │
+│                     │
+│  ┌───────────────┐  │
+│  │ Location Col  │  │
+│  │      ⋮        │  │  User clicks Filter
+│  │   [Filter]    │──┼──────────┐
+│  └───────────────┘  │          │
+└─────────────────────┘          ▼
+                        ┌─────────────────┐
+                        │ Filter          │
+                        │ Interceptor     │
+                        │                 │
+                        │ Detects location│
+                        │ column filter   │
+                        └────────┬────────┘
+                                 │
+                                 ▼
+                        ┌─────────────────┐
+                        │ Enhanced Filter │
+                        │ Modal           │
+                        │                 │
+                        │ • Multi-select  │
+                        │ • Search        │
+                        │ • Operators     │
+                        └─────────────────┘
+```
+
+### Key Components
+
+1. **FilterInterceptor Service** (`services/FilterInterceptor.ts`)
+   - Monitors DOM for filter menu clicks
+   - Identifies Location columns via Monday API
+   - Intercepts native filter actions
+
+2. **LocationFilterModal** (`components/LocationFilterModal.tsx`)
+   - Exact replica of Monday's native filter UI
+   - Fetches available locations from board data
+   - Applies filters via Monday SDK
+
+3. **Board View App** (`App.tsx`)
+   - Invisible background app
+   - Manages interceptor lifecycle
+   - Handles filter state
+
+## 🛠️ Development
+
+### Local Testing
+
+1. **Start dev server:**
 ```bash
-# Start only the server
-npm run dev-server
-
-# Build the client only
-npm run client-build
-
-# Start client development server
-npm run client-dev
+npm run dev
 ```
 
-## Project Structure
+2. **Test interceptor:**
+- The app will show a green indicator in development mode
+- Open browser console to see interceptor logs
+- Click on a Location column's filter to test
 
-```
-├── src/                    # Backend source code
-│   ├── controllers/        # Request handlers
-│   ├── routes/            # API route definitions
-│   ├── services/          # Business logic
-│   ├── middlewares/       # Express middlewares
-│   ├── generated/         # GraphQL generated types
-│   ├── app.ts            # Express app configuration
-│   └── server.ts         # Server entry point
-├── client/               # React frontend
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   └── App.tsx       # Main React component
-│   └── public/           # Static assets
-├── package.json          # Server dependencies and scripts
-└── README.md
-```
-
-## API Endpoints
-
-- `GET /health` - Health check endpoint
-- `GET /view` - Serves the React application
-- `GET /api/boards/:boardId` - Fetch board data with columns and items
-- `POST /api/monday` - Monday.com webhook endpoint
-- `POST /api/monday/execute_action` - Monday automation trigger
-- `POST /api/monday/reverse_string` - Example Monday action
-
-## Usage
-
-1. **In Monday.com:**
-
-   - Install the app in your Monday workspace
-   - Add it as a board view to any board with location data
-   - The app will automatically detect location columns
-
-2. **Local Testing:**
-   - Run `npm run dev` to start development
-   - Visit `http://localhost:8080/view` to test locally
-   - Mock data will be used for local development
-
-## Configuration
-
-### Environment Variables
-
-- `MONDAY_SIGNING_SECRET` - Your Monday app's signing secret (required)
-- `PORT` - Server port (default: 8080)
-- `NODE_ENV` - Environment (development/production)
-
-### Monday.com App Configuration
-
-Ensure your Monday.com app has:
-
-- Board view permissions
-- Read board data permissions
-- Webhook URL configured (for production)
-
-## Building for Production
-
-1. **Build the application:**
+### Building for Production
 
 ```bash
 npm run build
 ```
 
-2. **Deploy to Monday Code:**
+This creates:
+- `dist/` - Compiled server files
+- `client/build/` - Production React bundle
+
+### Deployment Options
+
+#### Option 1: Monday Code (Recommended)
 
 ```bash
 npm run deploy
 ```
 
-3. **Alternative deployment:**
+This uses Monday's hosting infrastructure.
 
-- The built files will be in `dist/` (server) and `client/build/` (client)
-- Deploy to your preferred hosting platform
+#### Option 2: Custom Hosting
 
-## GraphQL Code Generation
+Deploy to any Node.js host (Heroku, AWS, etc.):
 
-This project uses GraphQL code generation for type safety:
+1. Set environment variables on host
+2. Run build command
+3. Start with `npm start`
 
-```bash
-# Fetch latest Monday.com GraphQL schema
-npm run fetch:schema
+## 📊 API Reference
 
-# Generate TypeScript types
-npm run codegen
+### Monday SDK Methods Used
 
-# Do both in one command
-npm run fetch:generate
+```javascript
+// Get board context
+monday.get('context')
+
+// Fetch board data
+monday.api(graphqlQuery, { variables })
+
+// Apply filter
+monday.execute('filterBoard', { filterParams })
+
+// Store filter state
+monday.storage.instance.setItem(key, value)
 ```
 
-## Troubleshooting
+### Filter Parameters
 
-**Common Issues:**
+```javascript
+{
+  columnId: string,        // Location column ID
+  compareValue: string[],  // Selected locations
+  operator: 'any_of' | 'not_any_of' | 'is_empty' | 'is_not_empty'
+}
+```
 
-1. **"No board context found"**
+## 🐛 Troubleshooting
 
-   - Ensure the app is installed as a board view
-   - Check that you're accessing it from within a Monday.com board
+### Filter not intercepting
 
-2. **"Authorization token required"**
+1. Check browser console for errors
+2. Verify Location column type in Monday
+3. Ensure app has correct permissions
 
-   - Verify `MONDAY_SIGNING_SECRET` is set correctly
-   - Ensure your Monday.com app has proper permissions
+### Locations not loading
 
-3. **Build failures**
+1. Check Monday API response in Network tab
+2. Verify board has Location column with data
+3. Check for API rate limits
 
-   - Run `npm install` in both root and `client/` directories
-   - Check Node.js version (requires v18+)
+### UI doesn't match Monday's style
 
-4. **Development script issues**
-   - Make sure port 8080 is available
-   - Run `npm run stop` to kill any hanging processes
+1. Clear browser cache
+2. Check for Monday UI updates
+3. Verify CSS is loading correctly
 
-## Contributing
+## 🔍 Debug Mode
+
+Add to URL: `?debug=true` to enable verbose logging:
+- Shows all interceptor actions
+- Logs Monday API calls
+- Displays column detection
+
+## 📝 Future Enhancements
+
+- [ ] Radius-based filtering (within X miles)
+- [ ] Location grouping (by city, state, country)
+- [ ] Saved filter presets
+- [ ] Bulk location operations
+- [ ] Integration with map view
+- [ ] Custom location hierarchies
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit your changes: `git commit -am 'Add new feature'`
-4. Push to the branch: `git push origin feature/new-feature`
-5. Submit a pull request
+2. Create feature branch: `git checkout -b feature/new-feature`
+3. Commit changes: `git commit -m 'Add new feature'`
+4. Push branch: `git push origin feature/new-feature`
+5. Submit pull request
 
-## License
+## 📄 License
 
-This project is licensed under UNLICENSED - see the package.json file for details.
+MIT License - See LICENSE file for details
 
-## Support
+## 💬 Support
 
-For support with this integration:
+- **Documentation**: [Monday API Docs](https://developer.monday.com/)
+- **Issues**: Submit via GitHub Issues
+- **Community**: [Monday Community Forum](https://community.monday.com/)
 
-- Check the [Monday.com Developer Documentation](https://developer.monday.com/)
-- Review the [Monday.com GraphQL API](https://developer.monday.com/api-reference/docs/introduction-to-graphql)
-- Open an issue in this repository
+## 🙏 Acknowledgments
+
+- Monday.com for the comprehensive API
+- React team for the excellent framework
+- The Monday developer community
+
+---
+
+**Note**: This app enhances Monday.com's native functionality. Always test thoroughly before deploying to production boards.

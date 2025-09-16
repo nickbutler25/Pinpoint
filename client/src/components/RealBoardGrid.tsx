@@ -115,9 +115,13 @@ const RealBoardGrid: React.FC<RealBoardGridProps> = ({ onLocationFilterClick }) 
     fetchBoardData();
   }, [boardId]);
 
-  const handleColumnFilterClick = (column: any) => {
-    if (!boardData) return;
+const handleColumnFilterClick = (column: any) => {
+  if (!boardData) return;
 
+  console.log('🎯 Filter clicked for column:', column.title);
+
+  // Only use custom filter for columns named "Location"
+  if (column.title.toLowerCase() === 'location') {
     // Extract unique values from this column
     const columnValues = boardData.items
       .map(item => {
@@ -127,8 +131,13 @@ const RealBoardGrid: React.FC<RealBoardGridProps> = ({ onLocationFilterClick }) 
       .filter(value => value.trim())
       .filter((value, index, arr) => arr.indexOf(value) === index);
 
+    console.log('📍 Found locations:', columnValues);
     onLocationFilterClick(column.id, columnValues, boardData.items.length);
-  };
+  } else {
+    // For all other columns, show a message about native Monday.com filtering
+    alert(`Native Monday.com filtering would handle "${column.title}" column. Custom location filter only works on columns named "Location".`);
+  }
+};
 
   if (loading) {
     return (
@@ -207,7 +216,7 @@ const RealBoardGrid: React.FC<RealBoardGridProps> = ({ onLocationFilterClick }) 
       {/* Columns Header */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: `200px repeat(${Math.min(boardData.columns.length, 6)}, 1fr)`,
+        gridTemplateColumns: `200px repeat(${Math.min(boardData.columns.length, 12)}, 1fr)`,
         gap: '8px',
         marginBottom: '10px',
         padding: '12px',
@@ -218,29 +227,32 @@ const RealBoardGrid: React.FC<RealBoardGridProps> = ({ onLocationFilterClick }) 
         color: '#323338'
       }}>
         <div>Item Name</div>
-        {boardData.columns.slice(0, 6).map(column => (
+        {boardData.columns.slice(0, 12).map(column => (
           <div key={column.id} style={{ 
             display: 'flex', 
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
             <span>{column.title}</span>
-            <button
-              onClick={() => handleColumnFilterClick(column)}
-              style={{
-                padding: '4px 8px',
-                fontSize: '12px',
-                backgroundColor: column.type === 'location' || column.type === 'text' ? '#0085ff' : '#676879',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                marginLeft: '8px'
-              }}
-              title={`Filter by ${column.title}`}
-            >
-              ⋯
-            </button>
+                <button
+                onClick={() => handleColumnFilterClick(column)}
+                style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    backgroundColor: column.title.toLowerCase() === 'location' ? '#0085ff' : '#676879',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    marginLeft: '8px'
+                }}
+                title={column.title.toLowerCase() === 'location' ? 
+                    `Custom location filter for ${column.title}` : 
+                    `Native Monday.com filter for ${column.title}`
+                }
+                >
+                ⋯
+                </button>
           </div>
         ))}
       </div>

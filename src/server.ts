@@ -1,13 +1,23 @@
+// src/server.ts
 import app from './app';
-
-// This file exists solely to start the server
-// The actual app configuration is in app.ts
 
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📍 Board view available at: http://localhost:${PORT}/view`);
-  console.log(`🔗 Integration endpoint: http://localhost:${PORT}/api/monday`);
-  console.log(`📊 API endpoints: http://localhost:${PORT}/api/boards/:boardId`);
+  console.log('');
+  console.log('🚀 Monday Location Filter Server Started');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`📍 Board View:     http://localhost:${PORT}/view`);
+  console.log(`🏥 Health Check:   http://localhost:${PORT}/health`);
+  console.log(`🔧 Environment:    ${process.env.NODE_ENV || 'development'}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('💡 Development Tips:');
+    console.log('   - Use "npm run tunnel" to create a public URL');
+    console.log('   - Check browser console for interceptor logs');
+    console.log('   - Add ?debug=true to URL for verbose logging');
+    console.log('');
+  }
 });
