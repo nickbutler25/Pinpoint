@@ -1,14 +1,20 @@
 // src/app.ts
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import express from 'express';
 import path from 'path';
-import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+
+app.use((req, res, next) => {
+  // Set headers to help with tunnel
+  res.header('X-Tunnel-Password-Bypass', 'true');
+  next();
+});
 
 // Middleware
 app.use(cors());

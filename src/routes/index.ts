@@ -1,8 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import mondayRoutes from './monday';
 
-router.use(mondayRoutes);
 
 // serve client app
 router.use(express.static('client/build'));
